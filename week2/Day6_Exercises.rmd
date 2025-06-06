@@ -1,0 +1,167 @@
+
+
+```{r}
+data <- read.csv("C:/Users/ds3/Desktop/yhm-coursework/week2/magnets.csv")
+
+head(data)
+
+summary(data)
+```
+
+
+1. What is the sample average of the change in score between the patients rating before the application of the device and the rating after the application?
+
+> The sample average is 3.5.
+
+
+2. Is the variable active a factor or a numeric variable?
+
+> The variable active is a factor.
+
+
+3. Compute the average value of the variable change for the patients that
+ received and active magnet and average value for those that received an
+ inactive placebo. (Hint: Notice that the rst 29 patients received an active
+ magnet and the last 21 patients received an inactive placebo. The sub
+sequence of the rst 29 values of the given variables can be obtained via
+ the expression change[1:29] and the last 21 vales are obtained via the
+ expression change[30:50] .)
+
+ ```{r}
+mean(data[,"change"][1:29])
+mean(data[, "change"][30:50])
+```
+
+> The average value of the variable change for the patients that received 
+        and active magnet is 5.241379. The average value for those that received
+        an inactive placebo is 1.095238.
+
+
+
+
+4. Compute the sample standard deviation of the variable change for the
+patients that received and active magnet and the sample standard devia
+tion for those that received an inactive placebo.
+
+```{r}
+sd(data[,"change"][1:29])
+sd(data[, "change"][30:50])
+```
+
+> Received and active magnet: 3.236568. Received and inactive magnet: 1.578124.
+
+5. Produce a boxplot of the variable change for the patients that received
+ and active magnet and for patients that received an inactive placebo.
+ What is the number of outliers in each subsequence?
+
+```{r}
+boxplot(data[,"change"][1:29])
+boxplot(data[, "change"][30:50])
+table(data[, "change"][30:50])
+```
+
+The number of outliers in patients that received an inactive placebo is 4.
+
+
+
+Question 10.1. In Subsection 10.3.2 we compare the average against the mid
+range as estimators of the expectation of the measurement. The goal of this
+ exercise is to repeat the analysis, but this time compare the average to the
+ median as estimators of the expectation in symmetric distributions.
+
+
+ 1. Simulate the sampling distribution of average and the median of a sample
+ of size n = 100 from the Normal(3,2) distribution. Compute the expec
+tation and the variance of the sample average and of the sample median.
+ Which of the two estimators has a smaller mean square error
+
+ ```{r}
+library(tidyverse)
+
+X_mean <- rep(0, 10^5)
+X_medium <- rep(0, 10^5)
+
+for (i in 1 : 10^5) {
+        X <- rnorm(100, 3, sqrt(2))
+        X_mean[i] <- mean(X)
+        X_medium[i] <- median(X)
+}
+
+mean(X_mean)
+mean(X_medium)
+
+var(X_mean)
+var(X_medium)
+```
+
+The sampling distribution of average of a sample has smaller mean square error than the sampling distribution of median of a sample.
+
+2. Simulate the sampling distribution of average and the median of a sample
+ of size n = 100 from the Uniform(0.5,5.5) distribution. Compute the
+ expectation and the variance of the sample average and of the sample
+ median. Which of the two estimators has a smaller mean square error?
+
+
+```{r}
+X_mean_unif <- rep(0, 10^5)
+X_medium_unif <- rep(0, 10^5)
+
+for (i in 1 : 10^5) {
+        X <- runif(100, 0.5, sqrt(5.5))
+        X_mean_unif[i] <- mean(X)
+        X_medium_unif[i] <- median(X)
+}
+
+mean(X_mean_unif)
+mean(X_medium_unif)
+
+var(X_mean_unif)
+var(X_medium_unif)
+
+```
+
+
+The sampling distribution of average of a sample has smaller mean square error than the sampling distribution of median of a sample.
+
+
+ Question 10.2.
+
+```{r}
+pop2 <- read.csv("C:/Users/ds3/Desktop/yhm-coursework/week2/pop2.csv")
+ex2 <- read.csv("C:/Users/ds3/Desktop/yhm-coursework/week2/ex2.csv")
+
+head(pop2)
+head(ex2)
+
+n_ex2 <- nrow(ex2)
+
+ex2 |>
+        select(group) |>
+        filter(group == "HIGH") |>
+        summarize(count_high = n())
+
+ex2_prop_high_pressure <- 37/150
+ex2_prop_high_pressure   # 0.2466667
+
+pop2 |>
+        select(group) |>
+        filter(group == "HIGH") |>
+        summarize(count_high = n())
+
+pop2_prop_high_pressure <- 28126/ nrow(pop2)
+pop2_prop_high_pressure  # 0.28126
+
+
+P_hat <- rep(0, 10^5)
+for (i in 1: 10^5) {
+        X <- sample(pop2$group, 150)
+        P_hat[i] <- mean(X == "HIGH")
+}
+
+mean(P_hat) # 0.2812811
+var(P_hat)  # 0.001344962
+
+
+p <- mean(pop2$group == "HIGH")
+p*(1-p)/150
+```

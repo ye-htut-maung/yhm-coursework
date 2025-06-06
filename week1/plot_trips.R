@@ -31,7 +31,7 @@ ggplot(trips, aes(x = tripduration)) +
 # plot the distribution of trip times by rider type indicated using color and fill (compare a histogram vs. a density plot)
 
 ggplot(trips, aes(x = tripduration, color = usertype, fill = usertype)) +
-    geom_histogram() +
+    geom_histogram(bins = 30) +
     scale_x_log10()
 
 ggplot(trips, aes(x = tripduration, color = usertype, fill = usertype)) +
