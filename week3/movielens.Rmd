@@ -22,7 +22,7 @@ theme_set(theme_bw())
 
 Read data from the `ratings.csv` file
 ```{r load-data}
-ratings <- read_csv('ratings.csv',
+ratings <- read_csv('./week3/ratings.csv',
                     col_names = c('user_id','movie_id','rating','timestamp'))
 ```
 
@@ -35,6 +35,13 @@ head(ratings) %>% kable()
 
 ```{r dist-ratings}
 # plot the distribution of rating values https://speakerdeck.com/jhofman/modeling-social-data-lecture-2-introduction-to-counting?slide=26
+ratings |>
+  select(rating) |>
+  group_by(rating) |>
+  summarize(num_rating = n()) |>
+  ggplot(aes(x = rating, y = num_rating)) +
+  geom_col() +
+  scale_y_continuous(labels = comma)
 ```
 
 ## Per-movie stats
@@ -42,16 +49,51 @@ head(ratings) %>% kable()
 ```{r aggregate-by-movie}
 # aggregate ratings by movie, computing mean rating and number of ratings
 # hint: use the n() function for easy counting within a group
+
+ratings_agg_by_movie <- ratings |>
+  group_by(movie_id) |>
+  summarise(num_rating_per_movie = n(), mean_rating_per_movie=mean(rating))
+
+  
+# ratings_with_mean_rating <- ratings|> group_by(movie_id) |> summarise(mean_rating_per_movie=mean(rating))
+
+# ratings_with_rating_per_rate_per_movie <- ratings|>
+#   select(movie_id, rating) |>
+#   group_by(movie_id, rating) |>
+#   summarise(num_rating_per_rate_per_movie = n())
+
+# ratings_for_mean <- left_join(ratings_with_rating_per_rate_per_movie, ratings_with_rating_per_movie)
+# ratings_for_mean  
+
+# ratings_agg_by_movie <- left_join(ratings_with_num_rating, ratings_with_mean_rating)
+
+# ratings_agg_by_movie
+
 ```
 
 ```{r dist-movie-popularity}
 # plot distribution of movie popularity (= number of ratings the movie received)
 # hint: try scale_x_log10() for a logarithmic x axis
+
+ratings_agg_by_movie |> 
+  select(movie_id, num_rating_per_movie) |>
+  rename(popularity = num_rating_per_movie) |>
+  ggplot(aes(x = popularity)) +
+  geom_histogram() +
+  scale_x_log10()
+
+
 ```
 
 ```{r dist-mean-ratings-by-movie}
 # plot distribution of mean ratings by movie https://speakerdeck.com/jhofman/modeling-social-data-lecture-2-introduction-to-counting?slide=28
 # hint: try geom_histogram and geom_density
+
+ratings_agg_by_movie |>
+  select(movie_id, mean_rating_per_movie) |>
+  ggplot(aes(x = mean_rating_per_movie)) +
+  geom_density(fill = "grey")
+
 ```
 
 ```{r cdf-movie-pop}
@@ -59,7 +101,28 @@ head(ratings) %>% kable()
 # hint: use dplyr's rank and arrange functions, and the base R sum and cumsum functions
 # store the result in a new data frame so you can use it in creating figure 2 from the paper below
 
+ratings_agg_by_movie <- ratings_agg_by_movie |>
+  rename(popularity = num_rating_per_movie)
+
+ratings_cumulative_sum <- ratings_agg_by_movie |>
+  select(movie_id, popularity) |>
+  arrange(desc(popularity)) |>
+  mutate(rank = rank(desc(popularity))) |>
+  mutate(total_popularity = sum(popularity)) |>
+  mutate(fraction_of_popularity = popularity / total_popularity) |>
+  mutate(cumulative_population = cumsum(fraction_of_popularity)) |>
+  mutate(cdf_population_percent = cumulative_population * 100)
+
+ 
 # plot the CDF of movie popularity
+
+
+ratings_cumulative_sum |>
+  select(rank, cdf_population_percent) |>
+  ggplot(aes(x = rank, y = cdf_population_percent)) +
+  geom_line()
+
+
 ```
 
 
@@ -67,11 +130,20 @@ head(ratings) %>% kable()
 
 ```{r aggregate-by-user}
 # aggregate ratings by user, computing mean and number of ratings
+ratings_agg_by_user <- ratings |>
+  group_by(user_id) |>
+  summarise(num_rating_per_user = n(), mean_rating_per_user = mean(rating))
+
+
 ```
 
 ```{r dist-user-activity}
 # plot distribution of user activity (= number of ratings the user made)
 # hint: try a log scale here
+ratings_agg_by_user |>
+  ggplot(aes(x = num_rating_per_user)) +
+  geom_histogram() +
+  scale_x_log10()
 ```
 
 # Anatomy of the long tail
@@ -91,4 +163,9 @@ head(ratings) %>% kable()
 # paper, produce one curve for the 100% user satisfaction level and
 # another for 90%---do not, however, bother implementing the null
 # model (shown in the dashed lines).
+
+
+
+
+
 ```
