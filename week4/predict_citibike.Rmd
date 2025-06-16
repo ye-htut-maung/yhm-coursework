@@ -1,0 +1,431 @@
+---
+title: "Predict Citibike"
+date: '`r Sys.time()`'
+author : "Ye Htut Maung"
+output:
+  html_document:
+    #code_folding: hide
+    number_sections: yes
+    toc: yes
+    toc_depth: 3
+
+---
+
+
+
+## Libraries
+```{r}
+library(tidyverse)
+library(modelr)
+```
+
+## Loading Data
+```{r}
+trips_per_day <- read.csv("./week3/trips_per_day.tsv", sep = "\t")
+head(trips_per_day)
+```
+
+## weekday and weekend
+```{r}
+
+trips_per_day<- trips_per_day |>
+    mutate(is_weekend = as.numeric(wday(ymd) == 1 | wday(ymd) ==7 ))
+
+```
+
+## Season
+```{r}
+trips_per_day <- trips_per_day |>
+    mutate(season = case_when(
+        month(ymd) >= 3 & month(ymd) <= 5 ~ 1,
+        month(ymd) >= 6 & month(ymd) <= 8 ~ 2,
+        month(ymd) >= 9 & month(ymd) <= 11 ~ 3,
+        month(ymd) == 2 ~ 4,
+        month(ymd) == 1 ~ 4,
+        month(ymd) == 12 ~ 4,
+    )) |>
+    mutate(season = as.factor(season))
+```
+
+
+## Spliting in Training, and Testing Data
+```{r}
+set.seed(42)
+num_days <- nrow(trips_per_day)
+frac_train_test <- 0.9
+num_train_test <- floor(num_days * frac_train_test)
+
+# randomly sample rows for the training set
+ndx <- sample(1 : num_days, num_train_test, replace = F)
+
+trips_per_day_train <- trips_per_day[ndx, ]
+trips_per_day_test <- trips_per_day[-ndx, ]
+
+# K-fold
+num_folds <- 5
+
+trips_per_day_train <- trips_per_day_train |>
+    mutate(fold = (row_number() %% num_folds) + 1)
+
+
+```
+
+
+## Minimum Tempurature and Number of Trips model
+```{r}
+
+K <- 1:10
+
+avg_validate_err <- c()
+se_validate_err <- c()
+
+
+for(k in K) {
+
+    validate_err <- c()
+    for (f in 1:num_folds) {
+        # fit on the training data
+        model <- lm(num_trips ~ poly(tmin, k, raw=T), data=filter(trips_per_day_train, fold != f))
+
+        # evaluate on the validation data
+        trips_per_day_validate <- filter(trips_per_day_train, fold == f)
+        validate_err[f] <- sqrt(mean((predict(model, trips_per_day_validate) - trips_per_day_validate$num_trips)^2))
+    }
+  avg_validate_err[k] <- mean(validate_err)
+  se_validate_err[k] <- sd(validate_err) / sqrt(num_folds)
+}
+
+avg_validate_err
+se_validate_err
+```
+
+
+## Plot the validate error for minimum Tempurature and Number of Trips model
+```{r}
+# plot the validate error, highlighting the value of k with the lowest average error
+plot_data <- data.frame(K, avg_validate_err, se_validate_err)
+ggplot(plot_data, aes(x=K, y=avg_validate_err)) +
+  geom_pointrange(aes(ymin=avg_validate_err - se_validate_err,
+                      ymax=avg_validate_err + se_validate_err,
+                      color=avg_validate_err == min(avg_validate_err))) +
+  geom_line(color = "red") +
+  scale_x_continuous(breaks=1:12) +
+  theme(legend.position="none") +
+  xlab('Polynomial Degree') +
+  ylab('RMSE on validation data')
+```
+
+polynomial for tmin is 4
+
+
+## Prcp and Number of Trips model
+
+
+```{r}
+
+K <- 1:10
+
+avg_validate_err_prcp <- c()
+se_validate_err_prcp <- c()
+
+
+for(k in K) {
+
+    validate_err <- c()
+    for (f in 1:num_folds) {
+        # fit on the training data
+        model <- lm(num_trips ~ poly(prcp, k, raw=T), data=filter(trips_per_day_train, fold != f))
+
+        # evaluate on the validation data
+        trips_per_day_validate <- filter(trips_per_day_train, fold == f)
+        validate_err[f] <- sqrt(mean((predict(model, trips_per_day_validate) - trips_per_day_validate$num_trips)^2))
+    }
+  avg_validate_err_prcp[k] <- mean(validate_err)
+  se_validate_err_prcp[k] <- sd(validate_err) / sqrt(num_folds)
+}
+
+avg_validate_err_prcp
+se_validate_err_prcp
+
+```
+
+
+## Plot the validate error for prcp and Number of Trips model
+```{r}
+# plot the validate error, highlighting the value of k with the lowest average error
+plot_data <- data.frame(K, avg_validate_err_prcp, se_validate_err_prcp)
+ggplot(plot_data, aes(x=K, y=avg_validate_err_prcp)) +
+  geom_pointrange(aes(ymin=avg_validate_err_prcp - se_validate_err_prcp,
+                      ymax=avg_validate_err_prcp + se_validate_err_prcp,
+                      color=avg_validate_err_prcp == min(avg_validate_err_prcp))) +
+  geom_line(color = "red") +
+  scale_x_continuous(breaks=1:12) +
+  theme(legend.position="none") +
+  xlab('Polynomial Degree') +
+  ylab('RMSE on validation data')
+```
+
+polynomial for prcp is 2
+
+
+
+
+## snwd and Number of Trips model
+
+```{r}
+
+K <- 1:10
+
+avg_validate_err_snwd <- c()
+se_validate_err_snwd <- c()
+
+
+for(k in K) {
+
+    validate_err <- c()
+    for (f in 1:num_folds) {
+        # fit on the training data
+        model <- lm(num_trips ~ poly(snwd, k, raw=T), data=filter(trips_per_day_train, fold != f))
+
+        # evaluate on the validation data
+        trips_per_day_validate <- filter(trips_per_day_train, fold == f)
+        validate_err[f] <- sqrt(mean((predict(model, trips_per_day_validate) - trips_per_day_validate$num_trips)^2))
+    }
+  avg_validate_err_snwd[k] <- mean(validate_err)
+  se_validate_err_snwd[k] <- sd(validate_err) / sqrt(num_folds)
+}
+
+avg_validate_err_snwd
+se_validate_err_snwd
+
+```
+
+
+## Plot the validate error for snwd and Number of Trips model
+```{r}
+# plot the validate error, highlighting the value of k with the lowest average error
+plot_data <- data.frame(K, avg_validate_err_snwd, se_validate_err_snwd)
+ggplot(plot_data, aes(x=K, y=avg_validate_err_snwd)) +
+  geom_pointrange(aes(ymin=avg_validate_err_snwd - se_validate_err_snwd,
+                      ymax=avg_validate_err_snwd + se_validate_err_snwd,
+                      color=avg_validate_err_snwd == min(avg_validate_err_snwd))) +
+  geom_line(color = "red") +
+  scale_x_continuous(breaks=1:12) +
+  theme(legend.position="none") +
+  xlab('Polynomial Degree') +
+  ylab('RMSE on validation data')
+```
+
+polynomial for snwd is 5
+
+
+## snow and Number of Trips model
+
+```{r}
+
+K <- 1:10
+
+avg_validate_err_snow <- c()
+se_validate_err_snow <- c()
+
+
+for(k in K) {
+
+    validate_err <- c()
+    for (f in 1:num_folds) {
+        # fit on the training data
+        model <- lm(num_trips ~ poly(snow, k, raw=T), data=filter(trips_per_day_train, fold != f))
+
+        # evaluate on the validation data
+        trips_per_day_validate <- filter(trips_per_day_train, fold == f)
+        validate_err[f] <- sqrt(mean((predict(model, trips_per_day_validate) - trips_per_day_validate$num_trips)^2))
+    }
+  avg_validate_err_snow[k] <- mean(validate_err)
+  se_validate_err_snow[k] <- sd(validate_err) / sqrt(num_folds)
+}
+
+avg_validate_err_snow
+se_validate_err_snow
+
+```
+
+
+## Plot the validate error for snow and Number of Trips model
+```{r}
+# plot the validate error, highlighting the value of k with the lowest average error
+plot_data <- data.frame(K, avg_validate_err_snow, se_validate_err_snow)
+ggplot(plot_data, aes(x=K, y=avg_validate_err_snow)) +
+  geom_pointrange(aes(ymin=avg_validate_err_snow - se_validate_err_snow,
+                      ymax=avg_validate_err_snow + se_validate_err_snow,
+                      color=avg_validate_err_snow == min(avg_validate_err_snow))) +
+  geom_line(color = "red") +
+  scale_x_continuous(breaks=1:12) +
+  theme(legend.position="none") +
+  xlab('Polynomial Degree') +
+  ylab('RMSE on validation data')
+```
+
+polynomial for snow is 2 but we need to think if we should include because its rmse is high
+
+
+
+## tmax and Number of Trips model
+
+```{r}
+
+K <- 1:10
+
+avg_validate_err_tmax <- c()
+se_validate_err_tmax <- c()
+
+
+for(k in K) {
+
+    validate_err <- c()
+    for (f in 1:num_folds) {
+        # fit on the training data
+        model <- lm(num_trips ~ poly(tmax, k, raw=T), data=filter(trips_per_day_train, fold != f))
+
+        # evaluate on the validation data
+        trips_per_day_validate <- filter(trips_per_day_train, fold == f)
+        validate_err[f] <- sqrt(mean((predict(model, trips_per_day_validate) - trips_per_day_validate$num_trips)^2))
+    }
+  avg_validate_err_tmax[k] <- mean(validate_err)
+  se_validate_err_tmax[k] <- sd(validate_err) / sqrt(num_folds)
+}
+
+avg_validate_err_tmax
+se_validate_err_tmax
+
+```
+
+
+## Plot the validate error for tmax and Number of Trips model
+```{r}
+# plot the validate error, highlighting the value of k with the lowest average error
+plot_data <- data.frame(K, avg_validate_err_tmax, se_validate_err_tmax)
+ggplot(plot_data, aes(x=K, y=avg_validate_err_tmax)) +
+  geom_pointrange(aes(ymin=avg_validate_err_tmax - se_validate_err_tmax,
+                      ymax=avg_validate_err_tmax + se_validate_err_tmax,
+                      color=avg_validate_err_tmax == min(avg_validate_err_tmax))) +
+  geom_line(color = "red") +
+  scale_x_continuous(breaks=1:12) +
+  theme(legend.position="none") +
+  xlab('Polynomial Degree') +
+  ylab('RMSE on validation data')
+```
+
+polynomial for tmax is 8
+
+
+
+
+
+# Model Selection
+```{r}
+
+
+model_formulas <- c(
+    "prcp + snwd + snow + tmax + tmin",
+    "poly(prcp, 2, raw=T) + poly(snwd, 2, raw=T) + poly(snow, 2, raw=T) + poly(tmax, 2, raw=T) + poly(tmin, 4, raw=T) ",
+    "poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + poly(snow, 2, raw=T) + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T) ",
+    "poly(prcp, 2, raw=T) + snwd + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T)",
+    "poly(prcp, 2, raw=T) + poly(tmax, 8, raw=T) + snwd * poly(tmin, 4, raw=T)",
+    "poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T)",
+    "poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + poly(tmax, 8, raw=T) + log(tmin)",
+    "poly(prcp, 2, raw=T) + sqrt(snwd) + poly(tmax, 8, raw=T) + log(tmin)+ poly(snwd, 5, raw=T)",
+    "poly(prcp, 2, raw=T) + sqrt(snwd) + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T)",
+    "prcp + snwd + snow + tmax + tmin + poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T)",
+    "poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T) + is_weekend",
+    "poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T) + is_weekend + season",
+    "poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T) + is_weekend * season",
+    "poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + snow + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T) + is_weekend * season ",
+        "poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T) + is_weekend * season "
+)
+
+model_formulas = paste0("num_trips ~ ", model_formulas)
+M = length(model_formulas)
+
+
+avg_train_err_1 <- c()
+se_train_err_1 <- c()
+
+avg_validate_err_1 <- c()
+se_validate_err_1 <- c()
+
+
+
+for (m in 1:M) {
+
+    train_err <- c()
+    validate_err <- c()
+    for (f in 1:num_folds) {
+        # fit on the training data
+        model <- lm(model_formulas[m], data=filter(trips_per_day_train, fold != f))
+        train_err[f] <- sqrt(mean((predict(model, trips_per_day_train) - trips_per_day_train$num_trips)^2))
+
+        # evaluate on the validation data
+        trips_per_day_validate <- filter(trips_per_day_train, fold == f)
+        validate_err[f] <- sqrt(mean((predict(model, trips_per_day_validate) - trips_per_day_validate$num_trips)^2))
+    }
+
+    avg_train_err_1[m] <- mean(train_err)
+    se_train_err_1[m] <- sd(train_err) / sqrt(num_folds)
+
+    avg_validate_err_1[m] <- mean(validate_err)
+    se_validate_err_1[m] <- sd(validate_err) / sqrt(num_folds)
+        
+}
+
+
+# avg_validate_err_1
+# se_validate_err_1
+
+for(m in 1:M) {
+    print(model_formulas[m])
+    print("train error")
+    print(avg_train_err_1[m])
+
+    print("validate error")
+    print(avg_validate_err_1[m])
+    print("------------------------------")
+}
+```
+
+## Best model fit
+best model = "num_trips ~ poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + snow + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T) + is_weekend * season "
+```{r}
+best_mod = lm(num_trips ~ poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + snow + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T) + is_weekend * season, data = trips_per_day_train)
+best_mod
+rmse <- sqrt(mean((predict(model, trips_per_day_train) - trips_per_day_train$num_trips)^2))
+rmse
+rsq <- summary(best_mod)$r.squared
+rsq
+```
+
+
+
+## Plot the final best fit model
+
+```{r}
+trips_predictions <- trips_per_day_train |>
+    add_predictions(model) |>
+    mutate(pred = round(pred))
+
+trips_predictions |>
+    ggplot(aes(x = date)) +
+    geom_point(aes(y = num_trips, color = "actual trip")) +
+    geom_line(aes(y = pred, color= "predicted trip"))
+```
+
+```{r}
+trips_predictions |>
+    ggplot() +
+    geom_point(aes(x = pred, y= num_trips)) +
+    geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed")
+
+```
+
+```{r}
+save(best_mod, file="model.Rdata")
+```
