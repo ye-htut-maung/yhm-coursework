@@ -13,6 +13,7 @@ output:
 library(scales)
 library(tidyverse)
 library(knitr)
+library(ggplot2)
 
 # set plot theme
 theme_set(theme_bw())
@@ -22,7 +23,7 @@ theme_set(theme_bw())
 
 Read data from the `ratings.csv` file
 ```{r load-data}
-ratings <- read_csv('./week3/ratings.csv',
+ratings <- read_csv('ratings.csv',
                     col_names = c('user_id','movie_id','rating','timestamp'))
 ```
 
@@ -53,6 +54,8 @@ ratings |>
 ratings_agg_by_movie <- ratings |>
   group_by(movie_id) |>
   summarise(num_rating_per_movie = n(), mean_rating_per_movie=mean(rating))
+
+ratings_agg_by_movie
 
   
 # ratings_with_mean_rating <- ratings|> group_by(movie_id) |> summarise(mean_rating_per_movie=mean(rating))
@@ -107,12 +110,12 @@ ratings_agg_by_movie <- ratings_agg_by_movie |>
 ratings_cumulative_sum <- ratings_agg_by_movie |>
   select(movie_id, popularity) |>
   arrange(desc(popularity)) |>
-  mutate(rank = rank(desc(popularity))) |>
+  mutate(rank = row_number()) |>
   mutate(total_popularity = sum(popularity)) |>
   mutate(fraction_of_popularity = popularity / total_popularity) |>
   mutate(cumulative_population = cumsum(fraction_of_popularity)) |>
   mutate(cdf_population_percent = cumulative_population * 100)
-
+ratings_cumulative_sum
  
 # plot the CDF of movie popularity
 
@@ -164,8 +167,97 @@ ratings_agg_by_user |>
 # another for 90%---do not, however, bother implementing the null
 # model (shown in the dashed lines).
 
+ratings_long_tail <- left_join(ratings, ratings_cumulative_sum)
+ratings_long_tail
+
+ratings_long_tail_1 <- ratings_long_tail |>
+  group_by(user_id) |>
+  summarise(rank_of_weirdest = max(rank)) |>
+  arrange(rank_of_weirdest)
+
+ratings_long_tail_1 <- ratings_long_tail_1 |> 
+  group_by(rank_of_weirdest) |>
+  summarize(num_per_rank_of_wiredest = n())
+
+ratings_long_tail_1 <- ratings_long_tail_1 |>
+  mutate(total_rank = sum(num_per_rank_of_wiredest)) |>
+  mutate(percent_rank = (num_per_rank_of_wiredest / total_rank) *100) |>
+  mutate(cdf_percent_rank = cumsum(percent_rank))
+view(ratings_long_tail_1)
 
 
+max_store_size <- max(ratings_long_tail$rank)
+max_store_size
 
+store_sizes <- data.frame(rank_of_weirdest = c(1:max_store_size))
+head(store_sizes)
+
+after_join_rank <-left_join(store_sizes, ratings_long_tail_1) |>
+  fill(cdf_percent_rank)
+
+view(after_join_rank)
+
+after_join_rank |>
+  ggplot(aes(x = rank_of_weirdest, y = cdf_percent_rank)) +
+  geom_line()
 
 ```
+
+
+
+```{r}
+fig2 <-ratings_long_tail |>
+  select(user_id, rank) |>
+  arrange(user_id, rank)
+
+# fig2 |> 
+#   group_by(user_id) |>
+#   mutate(num_per_user_id = n()) |>
+#   mutate(ninety_percent = 0.9 * num_per_user_id)
+
+fig2 <- fig2 |>
+  group_by(user_id) |>
+  slice_head(prop = 0.90)
+
+fig2 <- fig2 |>
+  group_by(user_id) |>
+  summarise(rank_of_weirdest = max(rank)) |>
+  arrange(rank_of_weirdest) |>
+  group_by(rank_of_weirdest) |>
+  summarize(num_per_rank_of_wiredest = n()) |>
+  mutate(total_rank = sum(num_per_rank_of_wiredest)) |>
+  mutate(percent_rank = (num_per_rank_of_wiredest / total_rank) *100) |>
+  mutate(cdf_percent_rank = cumsum(percent_rank)) 
+
+
+fig2_join_rank <-left_join(store_sizes, fig2) |>
+  select(rank_of_weirdest, cdf_percent_rank) 
+
+fig2_join_rank <- fig2_join_rank |>
+  fill(cdf_percent_rank)
+
+fig2 |>
+  ggplot(aes(x = rank_of_weirdest, y = cdf_percent_rank)) +
+  geom_line()
+
+
+
+fig2_join_rank |>
+  ggplot(aes(x = rank_of_weirdest, y = cdf_percent_rank)) +
+  geom_line()
+
+```
+
+
+
+```{r}
+ggplot() +
+  geom_line(data = after_join_rank, aes(x = rank_of_weirdest, y = cdf_percent_rank, color= "100% Satisfaction")) +
+  geom_line(data = fig2_join_rank, aes(x = rank_of_weirdest, y = cdf_percent_rank, color = "90% Satisfaction")) +
+  scale_color_manual(values = c("100% Satisfaction" = "Blue", "90% Satisfaction" = " red"))
+```
+
+
+
+
+
