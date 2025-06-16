@@ -50,13 +50,13 @@ trips_per_day <- trips_per_day |>
 
 ## Spliting in Training, and Testing Data
 ```{r}
-set.seed(42)
+set.seed(42) # use 1947 for better result
 num_days <- nrow(trips_per_day)
 frac_train_test <- 0.9
-num_train_test <- floor(num_days * frac_train_test)
+num_train <- floor(num_days * frac_train_test)
 
 # randomly sample rows for the training set
-ndx <- sample(1 : num_days, num_train_test, replace = F)
+ndx <- sample(1 : num_days, num_train, replace = F)
 
 trips_per_day_train <- trips_per_day[ndx, ]
 trips_per_day_test <- trips_per_day[-ndx, ]
@@ -338,9 +338,8 @@ model_formulas <- c(
     "prcp + snwd + snow + tmax + tmin + poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T)",
     "poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T) + is_weekend",
     "poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T) + is_weekend + season",
-    "poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T) + is_weekend * season",
     "poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + snow + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T) + is_weekend * season ",
-        "poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T) + is_weekend * season "
+    "poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T) + is_weekend * season "
 )
 
 model_formulas = paste0("num_trips ~ ", model_formulas)
@@ -393,11 +392,11 @@ for(m in 1:M) {
 ```
 
 ## Best model fit
-best model = "num_trips ~ poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + snow + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T) + is_weekend * season "
+best model = "num_trips ~ poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T)  + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T) + is_weekend * season "
 ```{r}
-best_mod = lm(num_trips ~ poly(prcp, 2, raw=T) + poly(snwd, 5, raw=T) + snow + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T) + is_weekend * season, data = trips_per_day_train)
+best_mod <- lm(num_trips ~ poly(prcp, 4, raw=T) + poly(snwd, 5, raw=T) + poly(tmax, 8, raw=T) + poly(tmin, 4, raw=T) + is_weekend * season, data = trips_per_day_train)
 best_mod
-rmse <- sqrt(mean((predict(model, trips_per_day_train) - trips_per_day_train$num_trips)^2))
+rmse <- sqrt(mean((predict(best_mod, trips_per_day_train) - trips_per_day_train$num_trips)^2))
 rmse
 rsq <- summary(best_mod)$r.squared
 rsq
@@ -409,7 +408,7 @@ rsq
 
 ```{r}
 trips_predictions <- trips_per_day_train |>
-    add_predictions(model) |>
+    add_predictions(best_mod) |>
     mutate(pred = round(pred))
 
 trips_predictions |>
@@ -429,3 +428,25 @@ trips_predictions |>
 ```{r}
 save(best_mod, file="model.Rdata")
 ```
+
+## predict on testing data
+```{r}
+
+pred_on_testing <- predict(best_mod, trips_per_day_test)
+test_rmse <- sqrt(mean((pred_on_testing - trips_per_day_test$num_trips)^2))
+test_rmse
+
+cor = cor(pred_on_testing, trips_per_day_test$num_trips)
+cor_sq = cor ^ 2
+cor_sq
+
+mse = mean((pred_on_testing - trips_per_day_test$num_trips)^2)
+mse_baseline = mean((mean(trips_per_day_test$num_trips) - trips_per_day_test$num_trips)^2)
+mse_vs_baseline = (mse_baseline - mse) / mse_baseline
+mse_vs_baseline
+
+```
+
+## Notes after predicting on Testing data
+
+The seed value give different result on training and testing rmse results.
