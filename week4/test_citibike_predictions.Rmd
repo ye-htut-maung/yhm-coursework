@@ -1,0 +1,94 @@
+
+
+
+
+
+```{r}
+library(tidyverse)
+library(modelr)
+trips_per_day_2015 <- read.csv("./week4/trips_per_day_2015.tsv", sep="\t")
+weather_2015 <- read.csv("./week4/weather_2015.csv")
+final_model <- readRDS("./week4/model.Rdata") 
+
+head(trips_per_day_2015)
+head(weather_2015)
+
+trips_per_day_2015_join <- inner_join(trips_per_day_2015, weather_2015, by = c("ymd" = "DATE"))
+head(trips_per_day_2015_join)
+
+
+
+
+
+```
+
+## weekday and weekend
+```{r}
+
+trips_per_day_2015_join <- trips_per_day_2015_join |>
+    mutate(is_weekend = as.numeric(wday(ymd) == 1 | wday(ymd) ==7 ))
+
+head(trips_per_day_2015_join)
+nrow(trips_per_day_2015_join)
+```
+
+## Season
+```{r}
+trips_per_day_2015_join <- trips_per_day_2015_join |>
+    mutate(season = case_when(
+        month(ymd) >= 3 & month(ymd) <= 5 ~ 1,
+        month(ymd) >= 6 & month(ymd) <= 8 ~ 2,
+        month(ymd) >= 9 & month(ymd) <= 11 ~ 3,
+        month(ymd) == 2 ~ 4,
+        month(ymd) == 1 ~ 4,
+        month(ymd) == 12 ~ 4,
+    )) |>
+    mutate(season = as.factor(season))
+
+head(trips_per_day_2015_join)
+
+```
+
+
+```{r}
+
+colnames(trips_per_day_2015_join) <- tolower(colnames(trips_per_day_2015_join))
+
+# To verify the changes
+print(colnames(trips_per_day_2015_join))
+
+trips_per_day_2015_join <- trips_per_day_2015_join |>
+    mutate(tmax = tmax/10, tmin = tmin/10)
+```
+
+```{r testing-on-2015}
+
+pred_on_testing <- predict(final_model, trips_per_day_2015_join)
+test_rmse <- sqrt(mean((pred_on_testing - trips_per_day_2015_join$num_trips)^2))
+test_rmse
+
+summary(final_model)$r.squared
+```
+
+
+
+```{r}
+trips_predictions_2015 <- trips_per_day_2015_join |>
+    add_predictions(best_mod) |>
+    mutate(pred = round(pred))
+
+View(trips_predictions_2015)
+```
+
+## Compute the RMSE between the actual and predicted trips for 2015 and compare the results to what you found with cross-validation on the 2014 data.
+
+> test_rmse on 2015
+[1] 8158.375
+
+> test_rmse on 2014
+[1] 128720
+
+> summary(final_model)$r.squared
+[1] 0.9113253
+
+

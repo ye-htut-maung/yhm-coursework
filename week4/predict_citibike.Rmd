@@ -436,17 +436,30 @@ pred_on_testing <- predict(best_mod, trips_per_day_test)
 test_rmse <- sqrt(mean((pred_on_testing - trips_per_day_test$num_trips)^2))
 test_rmse
 
-cor = cor(pred_on_testing, trips_per_day_test$num_trips)
-cor_sq = cor ^ 2
-cor_sq
 
-mse = mean((pred_on_testing - trips_per_day_test$num_trips)^2)
-mse_baseline = mean((mean(trips_per_day_test$num_trips) - trips_per_day_test$num_trips)^2)
-mse_vs_baseline = (mse_baseline - mse) / mse_baseline
-mse_vs_baseline
+trips_predictions |>
+    ggplot(aes(x = date)) +
+    geom_point(aes(y = num_trips, color = "actual trip")) +
+    geom_line(aes(y = pred, color= "predicted trip")) +
+    geom_point(aes(y = num_trips, color="test points"), data = trips_per_day_test)
+
+#cor = cor(pred_on_testing, trips_per_day_test$num_trips)
+#cor_sq = cor ^ 2
+#cor_sq
+
+#mse = mean((pred_on_testing - trips_per_day_test$num_trips)^2)
+#mse_baseline = mean((mean(trips_per_day_test$num_trips) - trips_per_day_test$num_trips)^2)
+#mse_vs_baseline = (mse_baseline - mse) / mse_baseline
+#mse_vs_baseline
 
 ```
 
 ## Notes after predicting on Testing data
 
 The seed value give different result on training and testing rmse results.
+
+
+## prediction on new testing data
+```{r}
+weather_2015
+```
