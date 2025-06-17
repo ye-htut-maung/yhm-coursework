@@ -71,15 +71,6 @@ summary(final_model)$r.squared
 ```
 
 
-
-```{r}
-trips_predictions_2015 <- trips_per_day_2015_join |>
-    add_predictions(best_mod) |>
-    mutate(pred = round(pred))
-
-View(trips_predictions_2015)
-```
-
 ## Compute the RMSE between the actual and predicted trips for 2015 and compare the results to what you found with cross-validation on the 2014 data.
 
 > test_rmse on 2015
